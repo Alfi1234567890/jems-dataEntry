@@ -132,7 +132,7 @@ export default function Home() {
   };
 
   if (loading) {
-    return <p className="text-center mt-10 text-lg">Loading departments...</p>;
+    return <p className="text-center mt-10 text-lg">Loading departments.....</p>;
   }
 
   return (
