@@ -1,11 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-
-//import { PlusIcon } from "@heroicons/react/24/solid";
-
-import { PlusIcon, ArrowDownTrayIcon } from "@heroicons/react/24/solid";
-
-
+import { useEffect, useState, useRef } from "react";
+import { PlusIcon, BellIcon } from "@heroicons/react/24/solid";
 
 interface Department {
   departmentid?: number;
@@ -30,7 +25,14 @@ export default function Home() {
   });
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Fetch departments
+  // ✅ Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // ✅ Ref for focusing
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ Fetch departments
   const fetchDepartments = async () => {
     setLoading(true);
     try {
@@ -48,7 +50,7 @@ export default function Home() {
     fetchDepartments();
   }, []);
 
-  // ✅ Handle input with validation
+  // ✅ Handle input
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -57,7 +59,6 @@ export default function Home() {
     const { name, value } = e.target;
 
     if (name === "phonenumber") {
-      // Allow only digits
       const onlyDigits = value.replace(/\D/g, "");
       setFormData({ ...formData, [name]: onlyDigits });
     } else {
@@ -65,7 +66,7 @@ export default function Home() {
     }
   };
 
-  // ✅ Clear form
+  // ✅ Clear form and focus on Department Code
   const handleClear = () => {
     setFormData({
       departmentcode: "",
@@ -76,9 +77,14 @@ export default function Home() {
       status: "ACTIVE",
     });
     setEditingId(null);
+
+    // small delay before focusing to ensure reset is complete
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
-  // ✅ Submit with phone validation
+  // ✅ Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -108,68 +114,77 @@ export default function Home() {
     }
   };
 
-  // Edit
+  // ✅ Edit
   const handleEdit = (dept: Department) => {
     setFormData(dept);
     setEditingId(dept.departmentid || null);
+
+    // Focus when editing
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
-  // Delete
-  const handleDelete = async (id: number) => {
-    if (confirm("Are you sure you want to delete this department?")) {
-      try {
-        const res = await fetch(`http://localhost:4002/api/departments/${id}`, {
-          method: "DELETE",
-        });
-        if (res.ok) {
-          alert("✅ Department deleted!");
-          fetchDepartments();
-        }
-      } catch (error) {
-        console.error("Error deleting department:", error);
-      }
-    }
-  };
+  // ✅ Delete
+  // ✅ Delete only in frontend
+const handleDelete = (id: number) => {
+  if (confirm("Are you sure you want to remove this from the page?")) {
+    // Just remove from state (frontend)
+    setDepartments((prev) => prev.filter((dept) => dept.departmentid !== id));
+    alert("🗑️ Department removed from frontend (not deleted from database).");
+  }
+};
+
+
+  // ✅ Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentDepartments = departments.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+  const totalPages = Math.ceil(departments.length / itemsPerPage);
 
   if (loading) {
-    return <p className="text-center mt-10 text-lg">Loading departments.....</p>;
+    return <p className="text-center mt-10 text-lg">Loading departments...</p>;
   }
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
-      
-      
-<div className="flex justify-between items-center max-w-4xl mx-auto mb-6">
-  <h1 className="text-3xl font-bold text-gray-800">
-    Create New Department
-  </h1>
+      {/* Header */}
+      <div className="max-w-6xl mx-auto bg-white shadow-md rounded-xl p-4 mb-8 flex justify-between items-center">
+        <h1 className="text-xl font-semibold text-gray-800">
+          Create New Department
+        </h1>
 
-  <button
-  onClick={handleClear} // Clears form for adding new department
-  className="flex items-center bg-amber-600 text-white px-4 py-2 rounded-2xl hover:bg-amber-800"
->
-  <PlusIcon className="w-5 h-5 mr-2" />
-  Add Department
-</button>
+        <div className="flex items-center gap-4">
+          <button className="relative p-2 rounded-full hover:bg-gray-100 transition">
+            <BellIcon className="w-6 h-6 text-gray-600" />
+            <span className="absolute top-1 right-1 block h-2 w-2 bg-red-500 rounded-full"></span>
+          </button>
 
-</div>
+          <button
+            onClick={handleClear}
+            className="flex items-center bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition"
+          >
+            <PlusIcon className="w-5 h-5 mr-2" />
+            New Department
+          </button>
+        </div>
+      </div>
 
       {/* Form Section */}
       <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6 mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold">
-            {editingId ? "Edit Department" : "Create New Department"}
-          
-          </h2> 
-          
-        </div>
-
+        <h2 className="text-2xl font-semibold mb-2">
+          {editingId ? "Edit Department" : "Create New Department"}
+        </h2>
         <p className="text-gray-600 text-base mb-4">
-    Enter The Information For The New Department Below
-  </p>
+          Enter The Information For The New Department Below
+        </p>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
           <input
+            ref={inputRef} // ✅ focus target
             name="departmentcode"
             value={formData.departmentcode}
             onChange={handleChange}
@@ -219,7 +234,6 @@ export default function Home() {
             <option value="INACTIVE">INACTIVE</option>
           </select>
 
-          {/* Buttons Row */}
           <div className="col-span-2 flex justify-end gap-3">
             <button
               type="button"
@@ -232,14 +246,13 @@ export default function Home() {
               type="submit"
               className="flex items-center bg-amber-600 text-white px-4 py-2 rounded-2xl hover:bg-amber-800"
             >
-              <ArrowDownTrayIcon className="w-5 h-5 mr-2" />
               {editingId ? "Update Department" : "Save Department"}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Table */}
+      {/* Table Section */}
       <div className="max-w-6xl mx-auto bg-white shadow-lg rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Existing Departments</h2>
@@ -251,10 +264,9 @@ export default function Home() {
           </button>
         </div>
 
-<p className="text-gray-600 text-base mb-4">
-    List Of All Departments In The System
-  </p>
-
+        <p className="text-gray-600 text-base mb-4">
+          List Of All Departments In The System
+        </p>
 
         <table className="w-full border-collapse">
           <thead>
@@ -269,7 +281,7 @@ export default function Home() {
             </tr>
           </thead>
           <tbody>
-            {departments.map((dept) => (
+            {currentDepartments.map((dept) => (
               <tr key={dept.departmentid}>
                 <td className="border p-3 text-center">{dept.departmentid}</td>
                 <td className="border p-3">{dept.departmentcode}</td>
@@ -295,6 +307,62 @@ export default function Home() {
             ))}
           </tbody>
         </table>
+
+        {/* ✅ Pagination */}
+        <div className="flex justify-between items-center mt-6">
+          <p className="text-gray-600 text-sm">
+            Showing {indexOfFirstItem + 1} to{" "}
+            {Math.min(indexOfLastItem, departments.length)} of{" "}
+            {departments.length} entries
+          </p>
+
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded-l-lg border border-gray-300 ${
+                currentPage === 1
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white hover:bg-gray-100"
+              }`}
+            >
+              &lt;
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .slice(
+                Math.max(0, currentPage - 3),
+                Math.min(totalPages, currentPage + 2)
+              )
+              .map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1 border border-gray-300 ${
+                    currentPage === page
+                      ? "bg-amber-600 text-white"
+                      : "bg-white hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded-r-lg border border-gray-300 ${
+                currentPage === totalPages
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-white hover:bg-gray-100"
+              }`}
+            >
+              &gt;
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
